@@ -1,0 +1,8 @@
+{
+  "require": {
+    "symfony/process": "^v6.0.11",
+    "greenlion/php-sql-parser": "^4.3.0",
+    "erguncaner/table": "dev-master",
+    "doctrine/sql-formatter": "^1.1.3"
+  }
+}
