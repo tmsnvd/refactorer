@@ -9,7 +9,7 @@ use PhpMyAdmin\SqlParser\Parser;
 $my_conn = new PDO('sqlite:../q.db');
 $my_conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$sql = "select * from sql_table where create_columns <> 'wrong db' and combined = 0";
+$sql = "select * from sql_table where create_columns not like '%wrong%' and uses_temp_table = 0 AND very_slow_query = 0 AND combined = 0";
 
 foreach ($my_conn->query($sql) as $row) {
     $createQuery = trim($row['create_query']);
@@ -34,7 +34,7 @@ foreach ($my_conn->query($sql) as $row) {
     $sql->bindParam(':id', $row['id'], PDO::PARAM_INT);
 
     if ($sql->execute()) {
-        echo "Successfully updated record ".PHP_EOL;
+        echo "Successfully updated record " . PHP_EOL;
     } else {
         print_r($sql->errorInfo());
     }

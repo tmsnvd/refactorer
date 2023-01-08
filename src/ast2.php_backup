@@ -1,0 +1,89 @@
+<?php
+
+require_once '../vendor/autoload.php';
+
+use Microsoft\PhpParser\{DiagnosticsProvider, Node, Parser, PositionUtilities, TextEdit};
+
+// Instantiate new parser instance
+$parser = new Parser();
+
+// Return and print an AST from string contents
+$my_conn = new PDO('sqlite:../q.db');
+$my_conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+$sql = "select * from sql_table";
+
+foreach ($my_conn->query($sql) as $row) {
+    $code = file_get_contents('/Users/Tomas.Neverdauskas@mheducation.com/dev/interlink/' . $row['file']);
+    $astNode = $parser->parseSourceFile($code);
+    // var_dump($astNode);
+
+    echo $row['file'] . PHP_EOL;
+
+    foreach ($astNode->getDescendantNodes() as $descendant) {
+        if ($descendant instanceof Node\StringLiteral) {
+            // Print the Node text (without whitespace or comments)
+
+            $echoKeywordStartPosition = $descendant->getStartPosition();
+
+            $lineCharacterPosition = PositionUtilities::getLineCharacterPositionFromPosition(
+                $echoKeywordStartPosition,
+                $descendant->getFileContents()
+            );
+
+            if ((int)$row['line'] === $lineCharacterPosition->line + 1) {
+
+                echo ($lineCharacterPosition->line + 1) . PHP_EOL;
+
+                // $sibling = $descendant->getPreviousSibling()->getParent();
+                $assigment = $descendant->getParent();
+                $i = 0;
+                while (!$assigment instanceof Node\Expression\AssignmentExpression) {
+                    if ($assigment === null) {
+                        break;
+                    }
+                    $assigment = $assigment->getParent();
+                    $i++;
+                    if ($i > 20) {
+                        break;
+                    }
+                }
+
+                if ($assigment === null) {
+                    break;
+                }
+
+                $assigmentPosition = PositionUtilities::getLineCharacterPositionFromPosition(
+                    $assigment->getStartPosition(),
+                    $descendant->getFileContents()
+                );
+
+                // echo ($descendant->getText()) . PHP_EOL;
+                $edits = [
+                    new TextEdit($assigment->getStartPosition() - 1, 0, PHP_EOL . '$createQuery = "' . $row['create_query'] . '"; ' . PHP_EOL . 'kbQuery($createQuery);' . PHP_EOL),
+                ];
+                // file_put_contents('/Users/Tomas.Neverdauskas@mheducation.com/dev/interlink/' . $row['file'], TextEdit::applyEdits($edits, $code));
+
+//                $edits = [
+//                    new TextEdit($sibling->getEndPosition() + 1, 0, '$wtf; $wtwf;'),
+//                ];
+//                file_put_contents('/Users/Tomas.Neverdauskas@mheducation.com/dev/interlink/' . $row['file'], TextEdit::applyEdits($edits, $code));
+
+
+                // getPreviousSibling() -> startPostion() + 1 -> insert:
+                // $createTable = 'create table...';
+                // kb_query($createTable);
+
+                break;
+            }
+
+            // All Nodes link back to their parents, so it's easy to navigate the tree.
+            // $grandParent = $descendant->getParent()->getParent();
+            // var_dump($grandParent->getNodeKindName());
+
+            // The AST is fully-representative, and round-trippable to the original source.
+            // This enables consumers to build reliable formatting and refactoring tools.
+            // var_dump($grandParent->getLeadingCommentAndWhitespaceText());
+        }
+    }
+}
